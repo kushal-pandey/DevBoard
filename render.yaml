@@ -101,7 +101,7 @@ services:
           type: redis
           property: connectionString
       - key: DJANGO_API_URL
-        value: https://devboard-django.onrender.com
+        value: https://devboard-fastapi.onrender.com
 
   # ─── Redis ─────────────────────────────────────────────────────
   - type: redis
