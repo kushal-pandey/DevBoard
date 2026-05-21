@@ -9,3 +9,4 @@ drf-spectacular==0.26.5
 django-redis==5.4.0
 django-filter==23.3
 Pillow==10.1.0
+gunicorn==21.2.0

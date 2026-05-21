@@ -1,0 +1,110 @@
+databases:
+  - name: devboard-postgres
+    databaseName: devboard
+    user: devboard_user
+    plan: free
+
+services:
+  # ─── Django API ────────────────────────────────────────────────
+  - type: web
+    name: devboard-django
+    runtime: docker
+    dockerfilePath: ./django_app/Dockerfile
+    dockerContext: ./django_app
+    plan: free
+    healthCheckPath: /api/docs/
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: DB_NAME
+        value: devboard
+      - key: DB_USER
+        value: devboard_user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: devboard-postgres
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: devboard-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: devboard-postgres
+          property: port
+      - key: REDIS_URL
+        fromService:
+          name: devboard-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_API_URL
+        value: https://devboard-9mjs.onrender.com
+    buildCommand: ""
+    startCommand: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
+
+  # ─── Celery Worker ─────────────────────────────────────────────
+  - type: worker
+    name: devboard-celery
+    runtime: docker
+    dockerfilePath: ./django_app/Dockerfile
+    dockerContext: ./django_app
+    plan: free
+    startCommand: celery -A celery_worker worker -l info
+    envVars:
+      - key: SECRET_KEY
+        fromService:
+          name: devboard-django
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: "0"
+      - key: DB_NAME
+        value: devboard
+      - key: DB_USER
+        value: devboard_user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: devboard-postgres
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: devboard-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: devboard-postgres
+          property: port
+      - key: REDIS_URL
+        fromService:
+          name: devboard-redis
+          type: redis
+          property: connectionString
+
+  # ─── FastAPI Real-Time Service ─────────────────────────────────
+  - type: web
+    name: devboard-fastapi
+    runtime: docker
+    dockerfilePath: ./fastapi_app/Dockerfile
+    dockerContext: ./fastapi_app
+    plan: free
+    healthCheckPath: /health
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: devboard-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_API_URL
+        value: https://devboard-django.onrender.com
+
+  # ─── Redis ─────────────────────────────────────────────────────
+  - type: redis
+    name: devboard-redis
+    plan: free
+    maxmemoryPolicy: noeviction
