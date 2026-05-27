@@ -6,8 +6,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         urls = [
-            'https://your-django-service.onrender.com/api/docs/',
-            'https://your-fastapi-service.onrender.com/health',
+            'https://devboard-9mjs.onrender.com/api/docs/',
+            'https://devboard-fastapi.onrender.com/health',
         ]
         for url in urls:
             try:
